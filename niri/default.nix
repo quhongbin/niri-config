@@ -12,9 +12,6 @@
 
 let
   cfg = config.programs.niri;
-
-  # Files under ./dms/ that should be linked into ~/.config/niri/dms/.
-  dmsFiles = builtins.attrNames (builtins.readDir ./dms);
 in
 {
   # Reuse home-manager's existing programs.niri option rather than shadowing
@@ -53,14 +50,11 @@ in
       wl-clipboard
     ];
 
-    # Layout the config tree:
-    #   ~/.config/niri/config.kdl
-    #   ~/.config/niri/dms/<name>.kdl   (one per file in ./dms/)
-    xdg.configFile = lib.listToAttrs (map
-      (relPath: {
-        name = "niri/${relPath}";
-        value = { source = ./. + "/${relPath}"; };
-      })
-      ([ "config.kdl" ] ++ map (p: "dms/${p}") dmsFiles));
+    # Only config.kdl is managed here. The dms/ fragments in this repo are
+    # reference snapshots — DankMaterialShell writes its own copies to
+    # ~/.config/niri/dms/ at runtime, so we deliberately don't own them via
+    # home-manager (otherwise home-manager and DMS would clobber each other
+    # on every switch).
+    xdg.configFile."niri/config.kdl".source = ./config.kdl;
   };
 }
