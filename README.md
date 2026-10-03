@@ -8,6 +8,7 @@ compositor configuration, packaged as a Nix flake with a home-manager module.
 ```
 .
 ├── flake.nix              # entry point — produces homeConfigurations.quhongbin
+├── flake.lock             # pinned nixpkgs + home-manager revisions
 ├── install.sh             # symlink niri/ → ~/.config/niri/
 ├── niri/
 │   ├── default.nix        # home-manager module: installs niri + companion pkgs
@@ -27,78 +28,73 @@ compositor configuration, packaged as a Nix flake with a home-manager module.
 
 ## Prerequisites
 
-1. **Nix with flakes enabled.** Add to `~/.config/nix/nix.conf`:
-   ```ini
-   experimental-features = nix-command flakes
-   ```
-   If that file does not exist yet, create it.
+Nix with flakes enabled. Add to `~/.config/nix/nix.conf`:
 
-2. **home-manager.** Easiest is to run it through the flake (`nix run home-manager`),
-   which fetches a pinned copy — no system-wide install needed.
+```ini
+experimental-features = nix-command flakes
+```
+
+(If the file does not exist yet, create it.)
 
 ## Apply
 
 From the repo root:
 
 ```sh
+# 1. Install niri and the helper packages; register the niri.desktop entry
 home-manager switch --flake .#quhongbin
-```
 
-That installs `niri` and the helper packages the binds assume (`alacritty`,
-`fuzzel`, `waybar`, `swaylock`, `swayidle`, `brightnessctl`, `playerctl`,
-`wireplumber`, `pipewire`, `grim`, `slurp`, `wl-clipboard`), and registers a
-`niri.desktop` session entry so display managers can offer it.
-
-It does **not** touch `~/.config/niri/` — that directory is owned by this
-repo. See the next section.
-
-To preview without switching, dry-run with:
-
-```sh
-nix build .#homeConfigurations.quhongbin.activationPackage
-```
-
-## One-time setup: link the repo into ~/.config/niri/
-
-```sh
+# 2. Link the repo into ~/.config/niri/ so repo = live config
 ./install.sh
 ```
 
-That creates:
+The home-manager step installs:
+
+- `niri` (compositor)
+- `alacritty`, `fuzzel`, `waybar`, `swaylock`, `swayidle`, `brightnessctl`,
+  `playerctl`, `wireplumber`, `pipewire`, `grim`, `slurp`, `wl-clipboard`
+- `xdg-desktop-portal-gnome` (screen sharing / file pickers)
+
+…and writes `~/.local/share/applications/niri.desktop` so login managers
+(gdm, greetd, tuigreet, …) can offer niri as a session.
+
+The `install.sh` step creates:
 
 - `~/.config/niri/config.kdl` → `niri/config.kdl`
 - `~/.config/niri/dms/*.kdl`   → `niri/dms/*.kdl` (one symlink per file)
 
-Any existing real files at those paths are moved aside as `.bak`.
+After both steps, **the repo and the live config are the same files on disk**.
 
-After this, **the repo and the live config are the same files on disk**.
-That means:
+## Edit workflow
 
-- Editing `niri/config.kdl` is the same as editing `~/.config/niri/config.kdl`.
-  Reload niri with `niri msg action load-config`.
-- DankMaterialShell writing to `~/.config/niri/dms/colors.kdl` actually
-  writes into `niri/dms/colors.kdl`, so its changes are immediately
-  git-trackable. Just `git add -A && git commit`.
+```sh
+$EDITOR niri/config.kdl                  # edit in repo (= live config)
+niri msg action load-config              # hot-reload, no session restart
+git add -A && git commit                 # track the change
+```
+
+When DankMaterialShell writes to `~/.config/niri/dms/`, the writes actually
+land in `niri/dms/` via the symlinks, so theme changes are immediately
+git-trackable.
 
 ## Customizing
 
-- **Username / home directory** — edit `flake.nix` (`username` and
-  `homeDirectory`). Defaults to `dev` / `/home/dev`.
+- **Username / home directory / state version** — edit `flake.nix`. Defaults
+  to `dev` / `/home/dev` / `25.05`. Don't bump `stateVersion` on an existing
+  install without reading the home-manager release notes.
 - **Binds / layout / outputs** — edit `niri/config.kdl`, then reload with
   `niri msg action load-config`.
 - **Extra packages** — append to `home.packages` in `niri/default.nix`, then
   re-run `home-manager switch --flake .#quhongbin`.
 
-## Initializing the GitHub repo
+## Pinned versions
 
-This repo is initialized locally with a placeholder remote. After creating the
-repo on github.com (e.g. `quhongbin/niri-config`), point the remote at it:
+- `nixpkgs` → `nixos-25.05`
+- `home-manager` → `release-25.05`
 
-```sh
-git remote remove origin   # if a placeholder was added
-git remote add origin git@github.com:quhongbin/niri-config.git
-git push -u origin main
-```
+These were pinned together because home-manager 25.05 still uses the `fold`
+builtin that newer nixpkgs (26.11 / unstable) removed. To upgrade, bump both
+together.
 
 ## Notes on the current config
 
@@ -110,3 +106,11 @@ vim-style focus/move, etc.).
 The active eDP-1 output block is currently commented out with `/-` — uncomment
 it once you have confirmed the correct `mode` and `position` for your display
 with `niri msg outputs`.
+
+## Initializing the GitHub repo
+
+```sh
+git remote remove origin   # if a placeholder was added
+git remote add origin git@github.com:quhongbin/niri-config.git
+git push -u origin main
+```
