@@ -1,0 +1,22 @@
+# Nix build artifacts
+result
+result-*
+.direnv/
+
+# Home-manager switch backups created in $HOME
+*.bak
+*.swp
+*.swo
+
+# Editor / IDE noise
+.idea/
+.vscode/
+*.iml
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Nix flake.lock — keep tracked (reproducibility). Uncomment if you prefer
+# to regenerate it on each machine.
+# flake.lock
