@@ -19,7 +19,7 @@
   home.packages = [
     pkgs.niri
   ] ++ (with pkgs; [
-    alacritty
+    kitty
     fuzzel
     waybar
     swaylock
