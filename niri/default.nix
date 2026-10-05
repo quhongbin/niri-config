@@ -14,12 +14,37 @@
 
 { pkgs, lib, ... }:
 
+let
+  # On non-NixOS hosts, nix GUI apps cannot load GL: nix's libglvnd dlopens
+  # mesa's vendor libs (libEGL_mesa/libGLX_mesa) by soname, but they are
+  # neither in kitty's closure nor reachable through the host's /usr/lib
+  # (the nix loader never searches it). On NixOS /run/opengl-driver covers
+  # this; here we inject the nixpkgs mesa into LD_LIBRARY_PATH instead.
+  # Mesa MUST come from the same nixpkgs revision as kitty, otherwise its
+  # libgallium requires a newer glibc than kitty ships and crashes.
+  kitty-fixed = pkgs.symlinkJoin {
+    name = "kitty";
+    paths = [ pkgs.kitty ];
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    postBuild = ''
+      wrapProgram $out/bin/kitty \
+        --prefix LD_LIBRARY_PATH : ${pkgs.mesa}/lib
+      wrapProgram $out/bin/kitten \
+        --prefix LD_LIBRARY_PATH : ${pkgs.mesa}/lib
+    '';
+  };
+in
+
 {
   # Install niri and the helper packages the binds assume.
+  # home-manager itself must be here: `home-manager switch` replaces
+  # ~/.nix-profile wholesale, so without it the CLI disappears after
+  # the first switch on a non-NixOS host.
   home.packages = [
+    pkgs.home-manager
     pkgs.niri
   ] ++ (with pkgs; [
-    kitty
+    kitty-fixed
     fuzzel
     waybar
     swaylock
